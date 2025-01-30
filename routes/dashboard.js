@@ -72,6 +72,15 @@ router.get("/links", authMiddleware, async (req, res) => {
   const userId = req.user.id;
   const { limit, offset } = req.query;
   try {
+
+    const today = new Date();
+
+    // Update expired links to "Inactive" before fetching
+    await Link.updateMany(
+      { user: userId, expireDate: { $lt: today }, activeStatus: "Active" },
+      { $set: { activeStatus: "Inactive" } }
+    );
+    
     const exist = await Link.find({ user: userId })
       .skip(Number(offset) || 0)
       .limit(Number(limit) || 10);
