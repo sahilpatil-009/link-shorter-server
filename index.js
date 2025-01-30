@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const app = express();
 const dotenv = require("dotenv");
 const ConnectDB = require("./dbConnect/dbConnect.js");
@@ -18,6 +19,9 @@ app.use(cors());
 app.use(express.json());
 app.set('trust proxy', true);
 
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+
 // Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -35,24 +39,24 @@ app.get("/:shortLink", detectDeviceType, async (req, res) => {
     const link = await Link.findOne({ shortLink });
 
     if (!link) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Short link not found" });
+      return res.status(404).render("error", {
+        title: "404 Not Found",
+        message: "The link you are trying to access does not exist.",
+      });
     }
 
     const today = new Date();
     if (link.expireDate && link.expireDate < today) {
-      return res.status(410).json({
-        success: false,
-        message: "This link has expired and is no longer active",
+      return res.status(410).render("error", {
+        title: "Link Expired",
+        message: "This link has expired and is no longer active.",
       });
     }
 
-    // Save click information
     const clickData = {
       link: link._id,
       ipAddress: req.ip || "Unknown IP",
-      userDevice: req.deviceType, // Mobile, Tablet, or Desktop
+      userDevice: req.deviceType, 
       originalLink: link.originalLink,
       shortLink: link.shortLink,
     };
@@ -62,7 +66,6 @@ app.get("/:shortLink", detectDeviceType, async (req, res) => {
 
     link.totalClicks = (link.totalClicks || 0) + 1;
 
-    // Track device type clicks
     const deviceType = req.deviceType;
     link.deviceClicks = link.deviceClicks || {
       mobile: 0,
@@ -71,8 +74,7 @@ app.get("/:shortLink", detectDeviceType, async (req, res) => {
     };
     link.deviceClicks[deviceType] = (link.deviceClicks[deviceType] || 0) + 1;
 
-    // Track date-wise clicks
-    const currentDate = today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+    const currentDate = today.toISOString().split("T")[0];
     link.dateClicks = link.dateClicks || [];
     const dateEntry = link.dateClicks.find(
       (entry) => entry.date === currentDate
@@ -84,15 +86,13 @@ app.get("/:shortLink", detectDeviceType, async (req, res) => {
       link.dateClicks.push({ date: currentDate, count: 1 });
     }
 
-    // Save the updated link data
     await link.save();
-    // Redirect the user to the original link
     return res.redirect(link.originalLink);
   } catch (error) {
-    console.error("Error redirecting to original link:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
+    console.error("Error handling short link:", error);
+    return res.status(500).render("error", {
+      title: "Server Error",
+      message: "Something went wrong. Please try again later.",
     });
   }
 });
