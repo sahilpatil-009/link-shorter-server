@@ -144,25 +144,25 @@ router.patch("/update", authMiddleware, async (req, res) => {
 router.delete("/delete", authMiddleware, async (req, res) => {
   const userId = req.user.id;
   try {
-    // Step 1: Check if the user exists
+    // Check if the user exists
     const user = await User.findById(userId);
     if (!user) {
       return res.status(400).json({ success: false, message: "User not found" });
     }
 
 
-    // Step 2: Find all links created by the user
+    // Find all links created by the user
     const userLinks = await Link.find({ user: userId }).distinct("_id");
 
-    // Step 3: Delete all clicks related to these links
+    // Delete all clicks related to these links
     if (userLinks.length > 0) {
       await Clicks.deleteMany({ link: { $in: userLinks } });
     }
 
-    // Step 4: Delete all links associated with the user
+    // Delete all links associated with the user
     await Link.deleteMany({ user: userId });
 
-    // Step 5: Delete the user
+    // Delete the user
     await User.findByIdAndDelete(userId);
 
     return res.status(200).json({ success: true, message: "User and all associated data deleted successfully" });

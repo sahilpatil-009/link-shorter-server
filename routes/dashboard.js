@@ -147,30 +147,17 @@ router.get("/getClicks", authMiddleware, async (req, res) => {
       });
     }
 
-    // Step 2: Extract link IDs
     const userLinksIds = userLinks.map(link => link._id);
 
-    // Step 3: Fetch clicks associated with the user's links
     const userClicks = await Clicks.find({ link: { $in: userLinksIds } })
       .skip(Number(offset) || 0)
       .limit(Number(limit) || 10);
 
       const totalRecords = await Clicks.countDocuments({ link: { $in: userLinksIds } });
 
-    // const allClicks = await Promise.all(
-    //   userLinks.map(async (link) => {
-    //     // Fetch clicks for each link without populating the link details
-    //     const clicks = await Clicks.find({ link: link._id }).select("-link"); // Exclude the "link" field from the result
-    //     return clicks; // Return clicks for the current link
-    //   })
-    // );
-
-    // Merge all clicks from the array of arrays into a single array
-    // const mergedClicks = allClicks.flat(); // `flat()` will merge all sub-arrays into one
-
     return res.status(200).json({
       success: true,
-      clciks: userClicks, // Return merged clicks without the "link" field
+      clciks: userClicks, 
       count: totalRecords,
     });
   } catch (error) {
