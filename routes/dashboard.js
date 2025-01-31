@@ -70,8 +70,12 @@ router.get("/", authMiddleware, async (req, res) => {
 
 router.get("/links", authMiddleware, async (req, res) => {
   const userId = req.user.id;
-  const { limit, offset } = req.query;
+  const { limit, offset, search } = req.query;
   try {
+    const query = { user: userId };
+    if (search) {
+      query.remark = { $regex: search, $options: "i" }; 
+    }
 
     const today = new Date();
 
@@ -81,9 +85,10 @@ router.get("/links", authMiddleware, async (req, res) => {
       { $set: { activeStatus: "Inactive" } }
     );
     
-    const exist = await Link.find({ user: userId })
-      .skip(Number(offset) || 0)
-      .limit(Number(limit) || 10);
+    const exist = await Link.find(query)
+    .skip(Number(offset) || 0)
+    .limit(Number(limit) || 10);
+
     if (!exist) {
       return res.status(404).json({ success: false, message: "No Data found" });
     }
@@ -210,6 +215,7 @@ router.patch("/:id", authMiddleware, async (req, res) => {
 
   const { originalLink, remark, expireDate } = req.body;
   try {
+
     const exist = await Link.findById(id);
     if (!exist) {
       return res
@@ -222,6 +228,12 @@ router.patch("/:id", authMiddleware, async (req, res) => {
       remark,
       expireDate,
     });
+
+    if(expireDate){
+      await Link.findByIdAndUpdate(id, {
+        activeStatus: "Active"
+      })
+    }
 
     return res
       .status(200)
